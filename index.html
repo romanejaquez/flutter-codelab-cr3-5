@@ -1,0 +1,1787 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Flutter Codelab / Coding Roulette: Full Stack Flutter Apps Workshop (pt.5): Cloud Firestore - Saving Data to Firestore</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://storage.googleapis.com/codelab-elements/codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14"></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  id="flutter-codelab-cr3-5"
+                  title="Flutter Codelab / Coding Roulette: Full Stack Flutter Apps Workshop (pt.5): Cloud Firestore - Saving Data to Firestore"
+                  environment="web"
+                  feedback-link="https://romanjustcodes.web.app">
+    
+      <google-codelab-step label="Overview" duration="0">
+        <h2 is-upgraded>What You&#39;ll Build in this Workshop:</h2>
+<ul>
+<li>Saving Data back to Cloud Firestore</li>
+<li>Continue building on the FlutterBankService to implement saving logic</li>
+<li>Create our main page widget for handling Deposits (FLutterBankDeposit)</li>
+<li>Create a Provider service for handling updates localized to a widget and trigger notifications (DepositService)</li>
+</ul>
+<p>You will also learn about the following:</p>
+<ul>
+<li>Learn how widgets can communicate with each other via services in a decoupled fashion</li>
+<li>Learn how one widget can trigger another widget&#39;s build method using services</li>
+<li>Create Flutter User interfaces with ease</li>
+<li>Common Flutter Layout strategies using just core widgets</li>
+<li>Creating custom Flutter widgets and achieve widget composition</li>
+<li>Using Material Icon fonts</li>
+<li>State Management using Provider to decouple Business Logic of Components (BLoC)</li>
+</ul>
+<p>This is what we&#39;ll be accomplishing in this codelab: users will be able to pull account balance information and increment the balance by performing a deposit. Here&#39;s the widget page we&#39;ll be working on:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/8b979e1f43ed0789.png"></p>
+<p>Here&#39;s the schematics on what we&#39;ll be building regarding the deposit page:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/285260019b56c634.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Updating the FlutterBankService: Add Deposit functionality" duration="0">
+        <p>Let&#39;s start from the services side of things. We will create a new service that will hold on to the information on the amount be deposited.</p>
+<aside class="special"><p>Instead of lumping all functionality into a single service, it is best to break it up into the features our application is comprised of. This is a best practice to follow.</p>
+</aside>
+<p>Let&#39;s call this new service <strong>DepositService</strong>, and will hold on to on the amount value to be deposited.</p>
+<p>Create a class for the <strong>DepositService</strong> service with an internal property called <strong>amountToDeposit</strong>, type <strong>double</strong>. Make this service extend <strong>ChangeNotifier</strong> as this service will take care of notifying listeners accordingly:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/711c7e92dbe3642e.png"></p>
+<p>Let&#39;s add three methods that will perform the following:</p>
+<ul>
+<li>setAmountToDeposit: takes a <strong>double</strong> amount, and assigns the provided amount to <strong>amountToDeposit</strong>. Then it calls <strong>notifyListeners</strong> to let listeners know that the amount has changed.</li>
+<li>resetDepositService: resets the amount back to 0 and calls <strong>notifyListeners</strong></li>
+<li>checkAmountToDeposit: returns a <strong>bool</strong> just verifying whether the value of <strong>amountToDeposit</strong> is greater than zero.</li>
+</ul>
+<p>Your code inside the <strong>DepositService</strong> should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/58f81eef6479f95c.png"></p>
+<p>Don&#39;t forget to  inject the newly created <strong>DepositService</strong> at the root of our application, inside the list of <strong>providers</strong> of our <strong>MultiProvider</strong> widget, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/96a0c2d41fd1f183.png"></p>
+<p>Now, let&#39;s get back to the <strong>FlutterBankService</strong> and add some needed functionality to support this feature.</p>
+<p>In the <strong>FlutterBankService</strong>, add a new property called <strong>selectedAccount</strong>, type <strong>Account</strong>, which will hold on to the account selected by the user on which to perform the desired action (a deposit or a withdrawal):</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/a6da5414c7214b49.png"></p>
+<p>Let&#39;s add some getters and setters around the <strong>selectedAccount</strong> property. In the <strong>setSelectedAccount</strong>, upon assigining a provided account, make sure to also trigger the <strong>notifyListeners</strong> method provided by extending <strong>ChangeNotifier</strong>. For the <strong>getSelectedAccount</strong>, just return it.</p>
+<p>Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/af7d54100adb78ef.png"></p>
+<p>Now, let&#39;s add a new method called <strong>performDeposit</strong>, which returns a <strong>Future&lt;bool&gt;</strong> and takes a <strong>BuildContext</strong> reference. We&#39;ll also be using a <strong>Completer</strong> object to generate a future through which we&#39;ll complete this operation. Go ahead and add a <strong>Completer</strong> of type <strong>bool</strong> called <strong>depositComplete</strong> and return a Future out of it at the end of this method, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/927664d99f733330.png"></p>
+<p>The reason why we&#39;re passing the <strong>BuildContext</strong> context as a parameter to this method is because we&#39;ll also be fetching the data available on other provided services, and the only way to pull them is through the <strong>Provider.of</strong> mechanism, which requires a <strong>context</strong> passed to it.</p>
+<p>We&#39;ll need to fetch both the <strong>LoginService</strong> to get the unique UID from the user, as well as the <strong>DepositService</strong> created earlier to get the <strong>amountToDeposit</strong> value, so let&#39;s do just that; we&#39;ll grab the required values and store them in local variables:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/20d12a4793134b38.png"></p>
+<p>Now, after fetching these values, we&#39;ll perform the storing of the data to Firebase. We have the unique user id, which we&#39;ll use to fetch the corresponding document associated with the user, as well as the amount we want to change the specific account (the one that will be selected by the user and stored on <strong>selectedAccount</strong>), therefore we&#39;ll grab the document associated with that <strong>selecteAccount</strong>&#39;s id.</p>
+<p>Let&#39;s inspect the query:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f97f5c33f8db097c.png"></p>
+<p>We are starting at the root collection (accounts), then searching for the document in the root collection by user id, then search inside that document found inside its nested collection (user_accounts), and in turn, find a document associated with the selected account&#39;s id. At the end, the returning document is stored in a variable called <strong>doc</strong>, type <strong>DocumentReference</strong>.</p>
+<p>Then, on this document reference, we can perform the update to its <strong>balance</strong> field, where we will grab the existing balance and add the value in <strong>amountToDeposit</strong> that we fetched from the <strong>DepositService</strong>. The <strong>update</strong> method takes a dictionary object with the name of the field to update as key (‘balance&#39;) and the value the actual value to be assigned / updated to:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f23dda4ff39a9564.png"></p>
+<p>We could leave it up to here and it should work, but we kind of want to be notified when the update was performed and if it was done successfully or with an error, and of course we want to notify listeners that the update happed, so let&#39;s instead hook up to the <strong>.then</strong> method since the <strong>update</strong> call on the <strong>DocumentReference</strong> itself returns a Future, so we can chain success and error events, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/5784017074659a5.png"></p>
+<p>Notice other things we did on the event chaining we did on the <strong>.then()</strong>: upon a successful update, we invoke the <strong>depositService.resetDepositService</strong>, that way we can reset the <strong>amountToDeposit</strong> property back to zero, ready to take on a new transaction, and then completing the Future (<strong>depositComplete.complete(true)</strong>) so whoever is listening can be notified that the Future completed.</p>
+<p>On the <strong>onError</strong> handler, we are completing the Future, but with an error (<strong>depositComplete.completeError</strong>) and passing the error received in a dictionary with key <strong>error</strong>.</p>
+<p>With this, we&#39;ve completed all updates we needed to do as far as services is concerned. Now, on to implementing the UI that will consume these services!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Creating the main FlutterBankDeposit page widget" duration="0">
+        <p>Let&#39;s start by creating the class that represents the page widget that will perform the deposits. Let&#39;s call it <strong>FlutterBankDeposit</strong> that extends <strong>StatelessWidget</strong>. Return a <strong>Scaffold</strong> with white as its <strong>backgroundColor</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/7d126d220c1d4189.png"></p>
+<p>Add an <strong>AppBar</strong> like in the other pages with the same properties:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/110049dd8c7aae55.png"></p>
+<p>As the body of the <strong>Scaffold</strong>, set it as a <strong>Container</strong>, with 20px padding all around, and as its direct child, add a <strong>Column</strong> with its items left aligned, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/cbe3d9736f886070.png"></p>
+<p>Great! We have the foundation for our page.</p>
+<aside class="special"><p>For the next couple of sections we&#39;ll be concentrating on this page, so let&#39;s do the trick we did earlier in which we land on this page right away during development, which involves replacing the splash page by this page in the <strong>FluterBankApp</strong> widget. Do that and come back so we can proceed. All set? Let&#39;s go!</p>
+</aside>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Page: AccountActionHeader Widget" duration="0">
+        <p>This what we&#39;ll be tackling for the <strong>AccountActionHeader</strong> widget:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/59d7b9d146aab5a9.png"></p>
+<p>We&#39;ll be using this header on the rest of our pages, so we&#39;ll make it highly reusable.</p>
+<p>Start by creating a custom class called <strong>AccountActionHeader</strong> that extends <strong>StatelessWidget</strong>. Add two properties for holding both the icon and the header title and a corresponding constructor that populates them:</p>
+<ul>
+<li>headerTitle: type <strong>String</strong></li>
+<li>icon: type <strong>IconData</strong></li>
+</ul>
+<p>Add a <strong>build</strong> method that returns a <strong>Container</strong> widget, since that will be the root of our structure. Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/2324bb93733afcd7.png"></p>
+<p>To this <strong>Container</strong>, add some bottom margin of 20px, and as its direct child, add a <strong>Row</strong> widget, as we&#39;ll be packing all our widgets horizontally. As the children of this <strong>Row</strong>, then let&#39;s add an <strong>Icon</strong> widget, feeding to it the <strong>icon</strong> property, some space after it via a <strong>SizedBox</strong> 10px wide, and a <strong>Text</strong> widget feeding to it the <strong>headerTitle</strong> String with the proper styling.</p>
+<p>Confirm that your code looks like this inside the <strong>build</strong> method:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/1eaedf868d1fb146.png"></p>
+<p>With that, let&#39;s go back to the <strong>FlutterBankDeposit</strong> widget page and install the widget in place. Add the newly created <strong>AccountActionHeader</strong> widget as the <strong>Column</strong>&#39;s first child, passing its required parameters for <strong>headerTitle</strong> and <strong>icon</strong>, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6733831a6adbee49.png"></p>
+<p>See it on DartPad when you run it:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/26130ba193b761d1.png"></p>
+<p>Let&#39;s move on.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Page: AccountActionSelection Widget" duration="0">
+        <p>Now let&#39;s work on the body of this page, the <strong>AccountActionSelection</strong> widget, starting by the top portion which displays the accounts available.</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/71f7fcfaacde14b0.png"></p>
+<p>Back to the <strong>FlutterBankDeposit</strong>, under the <strong>AccountActionHeader</strong>, let&#39;s add an <strong>Expanded</strong> widget, since we want the widget here to occupy most of the real estate in the <strong>Column</strong>, and as its only child, add a placeholder widget called <strong>AccountActionSelection</strong>:</p>
+<aside class="special"><p>The <strong>AccountActionSelection</strong> widget doesn&#39;t exist yet, so don&#39;t fret. We&#39;ll start building it in a moment.</p>
+</aside>
+<p>Here&#39;s a schematic of what we&#39;ll be building:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/bfb10293cfab5e34.png"></p>
+<p>Let&#39;s start by creating the wrapper widget called <strong>AccountActionSelection</strong> as a <strong>StatelessWidget</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/90e6fc9ec5fa0e89.png"></p>
+<p>Since we want this widget to rebuild upon changes to the <strong>FlutterBankService</strong>, we&#39;ll ad as the root of the structure a <strong>Consumer</strong> widget, and make it a <strong>Consumer&lt;FlutterBankService&gt;</strong>, so replace the existing <strong>Container</strong> widget in the <strong>build</strong> method&#39;s body:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/869bd9aa4be73e93.png"></p>
+<p>We&#39;ll be fetching the accounts in the same way we did in the <strong>FlutterBankMain</strong> widget via the <strong>FlutterBankService</strong>&#39;s <strong>getAccounts</strong> method, so we&#39;ll need a <strong>FutureBuilder</strong> widget, so return a <strong>FutureBuilder</strong> widget out of the <strong>Consumer</strong>, and use the injected service in the <strong>Consumer</strong>, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f563460fa00062a2.png"></p>
+<h2 is-upgraded>Display Loading When No Data or Waiting</h2>
+<p>Check whether there&#39;s data, so you could show the reusable loading we created earlier called <strong>FlutterBankLoading</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/8bc0321bb206c0d7.png"></p>
+<h2 is-upgraded>Display an error widget if there was an issue</h2>
+<p>Also display a custom widget if there was an error during fetching the data. Let&#39;s create it real quick. Create a custom widget called <strong>FlutterBankError</strong> which just displays a simple generic error message.#</p>
+<aside class="special"><p>We&#39;d like to reuse this widget in other places, so you could further customize this widget by taking a message parameter. Feel free to do so!</p>
+</aside>
+<p class="image-container"><img alt="Deposit Screen" src="img/b2a5a2146c23aec6.png"></p>
+<p>Back on the <strong>AccountActionSelection</strong>, apply this newly created widget after checking for the <strong>snapshow.hasError</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/5c66131dfac4880e.png"></p>
+<p>To support this logic, let&#39;s go to the <strong>FlutterBankService</strong>&#39;s <strong>getAccounts</strong> and add the needed error logic by setting the <strong>onError</strong> parameter in the <strong>.then()</strong> from fetching the list of documents to a callback that captures the error and completes the <strong>accountsCompleter</strong> with an error (<strong>accountsCompleter.completeError</strong>):</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/3f5931eb8d1c2c65.png"></p>
+<p>After all the error conditions and lack of data conditions are handled, then we can proceed and start building the &#34;happy path&#34; of this widget - displaying the accounts.</p>
+<h2 is-upgraded>Displaying action type label based on transaction</h2>
+<p>Here&#39;s what we&#39;ll be building:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/636c6d6203dd080e.png"></p>
+<p>Let&#39;s start by grabbing the data from the <strong>Future</strong>&#39;s snapshot.data property and store it on a local variable called <strong>accounts</strong>, a <strong>List</strong> of <strong>Account</strong> objects. From the injected service in the parent <strong>Consumer</strong>, get the selected account by calling the service&#39;s <strong>getSelectedAccount()</strong> and storing it on another local variable called <strong>selectedAccount</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/d1d627a68029b9f9.png"></p>
+<p>We&#39;ll build the returning structure starting with a <strong>Column</strong> with its children aligned at the top.</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/ef155d96e3fc6534.png"></p>
+<p>Let&#39;s start with that <strong>Text</strong> widget that says &#34;To&#34;. Remember we want to make this widget reusable; if we are in the &#34;Deposits&#34; page, yes, it should say &#34;To&#34;, but not when it is in the &#34;Withdrawals&#34; page - it should say &#34;From&#34;. Let&#39;s make the content of this <strong>Text</strong> widget configurable by passing the string to this widget, so let&#39;s make a property in the <strong>AccountActionSelection</strong> widget called <strong>actionTypeLabel</strong>, type <strong>String</strong>. Pass it via the constructor as a parameter. Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/26cd405f43ee0890.png"></p>
+<aside class="special"><p>The next couple of sections will focus on the <strong>Column</strong> structure we&#39;re returning from the <strong>Future</strong> widget, for brevity and lack of real estate to show the code:</p>
+</aside>
+<p>Ok, let&#39;s proceed now. Back inside the <strong>FutureBuilder</strong> builder method where we&#39;re building the structure. Inside the returning <strong>Column</strong> widget, add the first <strong>Text</strong> widget, passing the newly added value of the <strong>actionTypeLabel</strong> to it, with some space below it using a <strong>SizedBox</strong> 10px high:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/b8c4bf6f1211fa21.png"></p>
+<p>We&#39;ll add the actual value later, but at least we have things hooked up already.</p>
+<h2 is-upgraded>Displaying the accounts: AccountActionCard widget</h2>
+<p>Let&#39;s proceed now to add the <strong>AccountActionCard</strong> widget, as described below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/44b53f3fb98d3103.png"></p>
+<p>Let&#39;s create a class called <strong>AccountActionCard</strong> which will allows to render the accounts and do the selection of the card on which we want to perform the selection. Return a <strong>Row</strong> from its <strong>build</strong> method since we&#39;ll lay out our cards horizontally:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/9dc221a46536e00d.png"></p>
+<p>To this widget, pass both the <strong>accounts</strong> list and the <strong>selectedAccount</strong> as parameters via the constructor:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/8ac1925f6e000171.png"></p>
+<p>Now, let&#39;s build the structure inside the <strong>Row</strong>:</p>
+<p>Use the <strong>accounts</strong> collection to generate a list of widgets to feed into the <strong>Row</strong> widget, using the <strong>List.generate</strong>. Use the <strong>accounts.length</strong> and the required callback to pull each <strong>Account</strong> object out of the current iteration. Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/849649adfec97423.png"></p>
+<p>Inside this <strong>List.generate</strong> method, is where we&#39;ll build the structure of each of the account cards. Let&#39;s start with a <strong>Container</strong> widget, with padding of 15px all around, as well as 5px of margin. Let&#39;s add some border radius of 10px as well as some shadow, and white as the background, as follows:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/983aca251e296979.png"></p>
+<p>We&#39;ll need a reference to the <strong>FlutterBankService</strong> so let&#39;s pull it via the <strong>Provider</strong> at the top of our <strong>build</strong> method:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/45f3d99ecd1bb8be.png"></p>
+<p>We want to apply a border to this <strong>Container</strong> when we determine that the selected account from the <strong>FlutterBankService</strong> matches the <strong>currentAccount</strong> in the iteration, so let&#39;s apply it by checking whether the <strong>currentAcount</strong> is equals to the <strong>selectedAccount</strong> property being passed via the constructor; apply the <strong>border</strong> using <strong>Border.all</strong> with a 5px width, and applying either a transparent color or the mainThemeColor when the selectedAccount != null and selectedAccount.id equals currentAccount.id:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/928fa3943a9a8fb7.png"></p>
+<p>Once we&#39;ve applied all the styles we want to the core <strong>Container</strong> widget that represents each account, we need to display some content in them. We&#39;ll display the account type (in uppercase) and the account number, pulling this data from the <strong>currentAccount</strong> object. Let&#39;s display this information vertically as a <strong>Column</strong> and show each piece of information as a <strong>Text</strong> widget:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6ac549dfc766cf6e.png"></p>
+<p>Hey, We&#39;ve typed a lot so far, and not seeing anything! Don&#39;t freak out! I think it&#39;s time to try it and see how&#39;s looking.</p>
+<p>Go back to the <strong>AccountActionSelection</strong> widget, and go to the <strong>Column</strong> where the <strong>actionTypeLabel Text</strong> widget is, so let&#39;s start adding our &#34;in-progress&#34; <strong>AccountActionCard</strong> widget, and pass both the <strong>selectedAccount</strong> and <strong>accounts</strong> values to it:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/bb07d652b5704c1f.png"></p>
+<p>Also don&#39;t forget to pass the <strong>actionTypeLabel</strong> all the way from the <strong>FlutterBankDeposit</strong> widget into the <strong>AccountActionSelection</strong> widget, like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/cc5a7e62da48172.png"></p>
+<p>If you run it on DartPad now, you will briefly see the spinning wheel / loading component (<strong>FlutterBankLoading</strong>), and then you&#39;ll be seeing the output as below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/4893182ed91806d5.png"></p>
+<p>Glad we&#39;re able to see something! Let&#39;s keep rolling and build the rest of the interaction.</p>
+<p>If you noticed, nothing happens when you tap on them. Let&#39;s add some tapping capabilities to these cards.</p>
+<p>Wrap them inside a <strong>GestureDetector</strong> widget and leverage the <strong>onTap</strong> event that&#39;s available. Assign a callback / handler to it, and inside, use the <strong>FlutterBankService</strong> service provided at the top of the build method, and call the method <strong>setSelectedAccount</strong>, passing the <strong>currentAccount</strong> to it; this will set what the current selected account is, while also triggering the <strong>notifyListeners</strong> on the service, which in turn notifies all widgets that are listening - in our case, the <strong>Consumer</strong> widget that is at the root of the <strong>AccountActionSelection</strong> widget, thus forcing it to rebuild.</p>
+<p>Your <strong>GestureDetector</strong> and its <strong>onTap</strong> method should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/db9b093e1c027b3.png"></p>
+<p>Lastly, on this widget, wrap the <strong>GestureDetector</strong> inside an <strong>Expanded</strong> widget - this will make all cards within the <strong>Row</strong> distribute their width proportionally among them.</p>
+<p>Confirm the <strong>build</strong> method on your <strong>AccountActionCard</strong> looks like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/b77c8f4e1c976fd2.png"></p>
+<p>If you run what we have through DartPad, here&#39;s what you&#39;ll see: a brief animation of the loading widget, then the available accounts. Try to tap on one of them, and  you&#39;ll see how they should be highlighted, thanks to the ability to select them, which triggers a rebuild of this widget. Awesome!</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/2c4c71c25fa85e82.gif"></p>
+<p>Great! Let&#39;s continue down this page and create the rest of the components in the <strong>AccountActionSelection</strong> widget.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Page: display the balance from the currently selected account" duration="0">
+        <p>The content below the <strong>AccountActionSelection</strong> should occupy the remaining space of the <strong>Column</strong> we&#39;re returning out of the <strong>FutureBuilder</strong> widget, so start by adding an <strong>Expanded</strong> widget. In turn, within this <strong>Expanded</strong> widget, add yet another <strong>Column</strong> widget since we want to line the children up vertically, aligned to the left and centered vertically, as follows:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/9dc8d5d76e401944.png"></p>
+<p>Unless the user selects one of the accounts, we don&#39;t want to perform any actions or expose any of the controls, so let&#39;s wrap the whole <strong>Column</strong> inside a <strong>Visibility</strong> widget, and apply its <strong>visible</strong> property only if the <strong>selectedAccount</strong> is not null:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/95123783fa560647.png"></p>
+<p>Inside of this <strong>Column</strong>, add the first child, a <strong>Container</strong> with 30px top margin, and as its child, a <strong>Text</strong> widget with the text &#34;Current Balance** in grey:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f34c56088ac53644.png"></p>
+<p>To display the balance, we&#39;ll use a <strong>Row</strong> widget, with its children center aligned, with an <strong>Icon</strong> and a <strong>Text</strong> to display the balance, pulling the value out of the <strong>selectAccount</strong> object; the balance will be displayed as a two-decimal amount and a dollar sign prepended to it, with the proper styling:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f2ec50481fd9b76a.png"></p>
+<p>Run it through DartPad; notice you don&#39;t see anything until you tap on an account card (that triggers the <strong>Visibility</strong> widget since no account was selected); then tap on one, then the other, then notice how the balances change, triggering a change on the <strong>AccountActionSelection</strong> widget, the <strong>selectedAccount</strong> changing values and triggering a rebuild on the widgets below, updating as expected:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/b99b4770d28e4948.gif"></p>
+<p>Sweet! Now that we have these pieces in place, let&#39;s work on the capability to capture a balance amount to be saved.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Page: AccountDepositSlider widget" duration="0">
+        <p>Let&#39;s now create a widget that allows the user to provide an amount to be saved back to Firebase as a deposit. This is what the widget consists of, as shown in the schematics below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/44633c3c0a6eaba5.png"></p>
+<p>This widget will be making use of the <strong>DepositService</strong> to both maintain its own state and to be able to notify widgets that decide to listen and are interested in the changes that occur with the <strong>DepositService</strong>.</p>
+<p>When the user moves the slider, it changes the value in the label above, which will trigger a notification on every value change. Other widgets will be listening to whether there has been a valid value provided by this widget, thus enabling or disabling themselves accordingly. We&#39;ll see that later.</p>
+<p>Let&#39;s proceed.</p>
+<p>We&#39;ll create a class called <strong>AccountDepositSlider</strong> that extends <strong>StatelessWidget</strong>; from its <strong>build</strong> method, return a <strong>Consumer</strong> that listens to the <strong>DepositService</strong>, which in turn will return a <strong>Column</strong> as its core widget structure:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/b51364df497f46bf.png"></p>
+<p>Align the children widgets in the <strong>Column</strong> both vertically and horizontally:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/7b679213f3cd4272.png"></p>
+<p>As the first two items of the <strong>Column</strong> widget, add a <strong>Text</strong> widget with the text &#34;Amount To Deposit&#34;, in grey; show the captured value of the amount to deposit in another <strong>Text</strong> widget, formatted as an integer, with a font size of 60px and black:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/3da3a20cb0591a81.png"></p>
+<p>And finally, we&#39;ll add a <a href="https://api.flutter.dev/flutter/material/Slider-class.html" target="_blank"><strong>Slider</strong></a> widget, which will allow us to change values from a range, using the following properties from the <strong>Slider</strong> class:</p>
+<ul>
+<li>value: the value to set the slider to; pull it from the <strong>DepositService</strong>&#39;s <strong>amountToDeposit</strong> in order for us to maintain the state of this widget in a provider service</li>
+<li>max: we&#39;ll hardcode it to 1000</li>
+<li>activeColor: mainThemeColor</li>
+<li>inactiveColor: grey, with 50% opacity</li>
+<li>thumbColor: the color of the slider thumb circle, mainThemeColor</li>
+<li>onChanged: callback handler that gets trigger when the user moves the slider, which provides the current slider value as it changes. We&#39;ll use the value provided by this handler in order to set it via the <strong>DepositService</strong>&#39;s <strong>setAmountToDeposit</strong> method</li>
+</ul>
+<p>Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/24f85ba44bd11e71.png"></p>
+<p>We should be done with this widget. Now let&#39;s come up with a way to integrate it into the application.</p>
+<p>The way we&#39;ll inject it is via the <strong>AccountActionSelection</strong> widget - the same way we added the <strong>actionTypeLabel</strong>. We will create a parameter that can accept any kind of object of type <strong>Widget</strong>, and this widget will place it in the location we desire - right under the balance row, wrapped inside an <strong>Expanded</strong> widget. That way we can use the <strong>AccountActionSelection</strong> widget in a very polymorphic way as we can use it also for the widthdrawal widget page, and we can insert our own withdrawal slider widget here as well.</p>
+<p>Let&#39;s go back to the <strong>AccountActionSelection</strong> widget, and in addition to the <strong>actionTypeLabel</strong>, add a property of type <strong>Widget</strong> called <strong>amountChange</strong>, which will be a placeholder for any widget that will handle the changing of the amount (i.e. whether for withdrawal or deposit). We will make this constructor parameter <strong>required</strong> in order to make sure a Widget is always supplied to the <strong>AccountActionSelection</strong> widget.</p>
+<p>The updated widget class should look like this afterwards:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6c5fab494e76afa3.png"></p>
+<p>Right below the <strong>Row</strong> widget displaying the current balance value, add an <strong>Expanded</strong> widget, and as its child, the <strong>amountChanger!</strong> widget, and then this becomes a placeholder for whatever widget we inject via the <strong>amountChanger property</strong>.</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/3de47f612e617ffa.png"></p>
+<aside class="warning"><p>You will notice now that the <strong>AccountActionSelection</strong> widget currently in the <strong>FlutterBankDeposit</strong> page widget is broken, as it requires a parameter - the <strong>amountChanger</strong> value; let&#39;s add it now</p>
+</aside>
+<p>Back on the <strong>FlutterBankDeposit</strong> widget, in the (currently broken) <strong>AccountActionSelection</strong>, now provide our newly created widget <strong>AccountDepositSlider</strong> assigning it to the <strong>amountChanger</strong>, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/4dc27420106c9602.png"></p>
+<p>Running this implementation through DartPad and you can see the results as below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/51718de7f7384cec.gif"></p>
+<p>As a recap: When the user selects one of the accounts, it triggers the visibility of the balance information via rebuilding the widget after being notified via the <strong>FlutterBankService</strong>&#39;s <strong>setSelectedAccount</strong> since the service has a <strong>notifyListeners</strong> invocation which triggers that widget.</p>
+<p>When the user moves the slider, it calls its <strong>onChanged</strong> event, which calls the <strong>DepositService</strong>&#39;s <strong>setAmountToDeposit</strong>, which internally makes a call to its <strong>notifyListeners</strong>; since we have a <strong>Consumer</strong> widget listening for changes in the <strong>DepositService</strong> in our <strong>AccountDepositSlider</strong>, this triggers the widget to rebuild itself, updating accordingly based on the updated amount to deposit being set.</p>
+<p>Instead of using something like <strong>setState</strong> and using a <strong>StatefulWidget</strong>, we are instead triggering widget rebuilds and state manangement using <strong>Provider</strong> services that extend <strong>ChangeNotifier</strong> so listeners can rebuild and update accordingly, keeping things neat, well architected and decoupled.</p>
+<p>We&#39;re making great progress! Let&#39;s move on to the next step.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Page: Enabling the Make Deposit Button" duration="0">
+        <p>Now let&#39;s bring the last widget of this page, which will be the &#34;Make Deposit&#34; button. This button will be what ultimately triggers the deposit workflow and performs the save to Firebase Cloud Firestore.</p>
+<p>As the last item in the <strong>FlutterBankDeposit</strong> main <strong>Column</strong> structure, below the <strong>AccountActionSelection</strong> wrapper <strong>Expanded</strong> widget, add a <strong>Consumer</strong> that also listens to the <strong>DepositService</strong>; we&#39;ll do this so that when the <strong>AccountDepositSlider</strong> widget changes its value to a valid value to be deposited, our <strong>Consumer</strong> will rebuild and evaluate a condition whether to enable / disable the button we will display to perform the saving.</p>
+<p>So, add the <strong>Consumer&lt;DepositService&gt;</strong> at the end of the <strong>Column</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/e777057aca7eb37a.png"></p>
+<p>Out of the <strong>Consumer</strong>&#39;s <strong>builder</strong> method, return a <strong>FlutterBankMainButton</strong> with the following specs:</p>
+<ul>
+<li>enabled: set this flag out of executing the <strong>DepositService</strong>&#39;s <strong>checkAmountToDeposit</strong>, which spits out a flag whether the amount to deposit is greater than zero, so as to enable / disable the button;</li>
+<li>label: String that says &#34;Make Deposit&#34;</li>
+<li>onTap: add an empty callback for now</li>
+</ul>
+<p>Confirm your code looks like this after implementing it:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6a5aef09830b53fe.png"></p>
+<p>Let&#39;s run this in DartPad and take it for a spin; move the slider and change its value; make sure sometimes you bring the value to zero to notice how the button disables itself (since the condition is hit) and so on.</p>
+<p>You should see the <strong>FlutterBankMainButton</strong> behaving like below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6c8e6e6d35d97f3c.gif"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Deposit Screen: Triggering the Deposit Workflow" duration="0">
+        <p>Both deposit or withdrawal will be delegated to a separate page, which we&#39;ll call <strong>TransactionCompletionPage</strong>; this page will perform the call, return the result and display it to the user, as well as redirect them to the main page for further transactions. Let&#39;s see what this looks like:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/f82811ca5d1afa47.gif"></p>
+<p>And this is how the workflow transitions through the many states in which it could potentially be:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/9aaba98d556a1bac.png"></p>
+<p>This should be a simple page, so let&#39;s get right to it.</p>
+<p>Create a custom class called <strong>TransactionCompletionPage</strong> that takes one parameter via its constructor: a flag to denote whether it is a deposit or withdrawal called <strong>isDeposit</strong> (you can think of other ways in which you could optimize this approach; I&#39;m keeping it simple this time since I only have two types of transactions). From its <strong>build</strong> method, return a <strong>Scaffold</strong>:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/d06edb8743d831cb.png"></p>
+<p>As usual, set the <strong>backgroundColor</strong> of the <strong>Scaffold</strong> to white as well as adding the common <strong>AppBar</strong> properties, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/fe1c4c658909aec.png"></p>
+<p>Let&#39;s make sure that at the top of the <strong>build</strong> method, we are extracting the <strong>FlutterBankService</strong> out of the <strong>Provider</strong>, as follows:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/5a5d40c18cd771f2.png"></p>
+<p>As the body of the <strong>Scaffold</strong>, set it to a <strong>Center</strong> widget, as all widgets displayed here will be center aligned:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/e6f092b3ceb772c.png"></p>
+<p>Then, as a child of the <strong>Center</strong> widget, set it to be a <strong>FutureBuilder</strong> since we will be performing either the depositing or withdrawing from here, and both transactions are asynchronous and return <strong>Future</strong> objects. For now, add the <strong>FutureBuilder</strong> as a child of <strong>Center</strong> and assign its <strong>future</strong> property to the <strong>bankService.performDeposit(context)</strong> since we&#39;ll be doing the deposit this time around, later we&#39;ll wrap up the withdrawal:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/af79510cec64aea4.png"></p>
+<p>As before, let&#39;s handle the lack of data and error conditions, and display the corresponding component based on that:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/a5f272b75347c5a7.png"></p>
+<p>Once all those scenarios are taken care of, we should also handle the success. Let&#39;s create another custom widget called <strong>FlutterBankTransactionCompleted</strong> widget, just to handle that scenario.</p>
+<aside class="special"><p>We could&#39;ve done also one single widget that takes care of all scenarios: loading, error, success, etc. That&#39;s definitely a possibility for a potential refactor. This approach is simple as it keeps things separate. I&#39;m not worried about code duplication because the amount of code is small within these widgets and I like to keep things separate like in this scenario.</p>
+</aside>
+<p>In this new class, you can add the same structure as in the other small widgets: a <strong>Column</strong> widget with its children centered both horizontally and vertically, with an <strong>Icon</strong> widget, some spacing and a <strong>Text</strong> label underneath it, as below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/681cb4feecb81492.png"></p>
+<p>Go back to the <strong>TransactionCompletionPage</strong> and handle the remaining condition, which is the &#34;happy path&#34;:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/8b1b1f8bfea56b14.png"></p>
+<p>Nice, we&#39;ve taken care of this page. Let&#39;s hook it up to the &#34;Make Deposit&#34; button on our <strong>FlutterBankDeposit</strong> page from earlier.</p>
+<p>Go back to the <strong>FlutterBankDeposit</strong>, locate the <strong>Consumer</strong> widget wrapping the <strong>FlutterBankMainButton</strong> for the deposit, and on the <strong>onTap</strong> event, let&#39;s do the following logic: let&#39;s check for whether the amount to make a deposit is valid (greater than zero), if so, then we&#39;ll hook up an event to it that navigates the user to our <strong>TransactionCompletionPage</strong> (using the <strong>Navigator.of(context)</strong> and calling <strong>pushReplacement</strong>).</p>
+<aside class="special"><p>By calling <strong>pushReplacement</strong> we will replace the <strong>FlutterBankDeposit</strong> page by the <strong>TransactionCompletionPage</strong> in the navigation stack, so that if the user attempts to hit back on the header bar, instead of going back to the deposit page, it will actually go back to the main page; with this we are ensuring that the user always comes into the <strong>FlutterBankDeposit</strong> page from the main page, and not backing out of a transaction.</p>
+</aside>
+<p>Then, to the <strong>TransactionCompletionPage</strong> widget, pass as a parameter the flag <strong>isDeposit</strong> to true, otherwise, just assign <strong>null</strong> to the <strong>onTap</strong> event handler (setting a button&#39;s event handler to <strong>null</strong> just makes it disabled to clicking).</p>
+<p>Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/acc75d8e8d6d91cf.png"></p>
+<p>If you save and try it in DartPad, you will see the value being saved, and the transaction page showing it completed successfully.</p>
+<p>One additional improvement that we want to do is that we don&#39;t want to just leave the user here on this page, and force them to have to hit the back button on the header bar.</p>
+<p>We want to improve the experience: we&#39;ll introduce a tiny delay and after that, we&#39;ll redirect the user back to the main page.</p>
+<p>Back on the <strong>TransactionCompletionPage</strong> widget page, at the top of the <strong>build</strong> method (it could be right below the <strong>FlutterBankService</strong> reference), use the <strong>Future.delayed</strong> to introduce a small delay (3 seconds), in which all we do is pop the existing screen at the moment (the same <strong>TransactionCompletionPage</strong>). If the user hits back within those 3 seconds, it&#39;s ok - it&#39;s what happens after those 3 seconds - the app will automatically redirect the user back to the main page, since the deposit page was already swapped by this one in the <strong>Navigator.of().pushReplacement</strong> call:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/c0cf20cfa7291d2.png"></p>
+<p>With that in place, I believe we should be good to go!</p>
+<p>Let&#39;s bring this whole workflow from end to end.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Hooking up the FlutterBankDeposit to the bottom navigation bar" duration="0">
+        <p>Now we need to find the way to trigger this page we just created, and we have just the place: the bottom navigation bar.</p>
+<p>Remember we had there some unfinished event handlers attached to each of the actions in the bottom bar. Well, let&#39;s populate those now.</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/6da5478db8120dd4.gif"></p>
+<p>Let&#39;s refactor some code.</p>
+<p>Go to the <strong>Utils</strong> class, and in the <strong>getBottomBarItems</strong>, refactor this method so it can take now a <strong>BuildContext</strong> object; that way, within the <strong>getBottomBarItems</strong> we can access the <strong>Navigator</strong> by doing a <strong>Navigator.of</strong> with the <strong>context</strong>.</p>
+<p>Still inside the <strong>getBottomBarItems</strong> method, locate the <strong>FlutterBankBottomBarItem</strong> with label &#34;Deposit&#34;, and on its <strong>action</strong> handler method, perform a navigation to the <strong>FlutterBankDeposit</strong>, using the provided context to this method. Your code should look like this:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/892bf04467c8dbf0.png"></p>
+<p>Go now to the <strong>FlutterBankBottomBar</strong> since we now need to pass the <strong>context</strong> inside the <strong>Utils.getBottomBarItems</strong> call located here, as in the code below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/dc4400a0ed13dd3f.png"></p>
+<aside class="special"><p>You want to test the whole workflow? Make sure to undo what we did on the <strong>FlutterBankApp()</strong> and put back the splashscreen on the <strong>MaterialApp</strong> home.</p>
+</aside>
+<aside class="special"><p>Also don&#39;t forget to remove the hard-coded unique UIDs we put on the <strong>FlutterBankService</strong> during development; change it back to <strong>doc(userId)</strong> so it takes the id of the logged in user.</p>
+</aside>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Clearing / Resetting the Selected Account" duration="0">
+        <p>I believe we&#39;re pretty much done, aside from a few things we could improve. At this point, if you are in the main page (<strong>FlutterBankMain</strong>), navigate to the deposits page (<strong>FlutterBankDeposit</strong>), select an account, then go back to the main, and then back to deposits, you will see that the selection got persisted. We don&#39;t want to persist the previous selection, we want to reset the selection when we hit the back button, also when the transaction is complete and we go back to main, also we want to reset the selection - not persist it.</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/5a4b9a074f6fb08c.gif"></p>
+<p>The way to accomplish that is through a widget called <a href="https://api.flutter.dev/flutter/widgets/WillPopScope-class.html" target="_blank"><strong>WillPopScope</strong></a>. With this widget you can pretty much intercept the dismissal of the current page in order to perform one last action (like a clean-up action, in our case, resetting the selected account).</p>
+<p>Let&#39;s work on this.</p>
+<p>Let&#39;s go to the <strong>FlutterBankDeposit</strong> widget page and wrap the whole root widget in your <strong>build</strong> method (in our case, the <strong>Scaffold</strong>) inside the <strong>WillPopScope</strong> widget. Add the required argument <strong>onWillPop</strong> which is a callback where you can handle your cleanup before the page is dismissed, as such:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/34d26b95cc65c134.png"></p>
+<p>Inside the <strong>onWillPop</strong>, use the <strong>Provider.of</strong> to pull a reference of the <strong>FlutterBankService</strong> here:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/63702d4590181fae.png"></p>
+<p>Back in the <strong>FlutterBankService</strong>, add a method called <strong>resetSelections()</strong> where we&#39;ll take care of resetting a few things here, including the <strong>selectedAccount</strong> property of the <strong>FlutterBankService</strong></p>
+<p class="image-container"><img alt="Deposit Screen" src="img/996c4c3df104436e.png"></p>
+<p>Back on the <strong>FlutterBankDeposit</strong> widget page, finish the <strong>onWillPop</strong> method, and call this method out of the <strong>FlutterBankService</strong> instance we just retrieved, and add at the end of the call, return a <strong>Future.value(true)</strong>, required by this method, because if the callback returns a Future that resolves to false, the enclosing route will not be popped.</p>
+<p>Check your code against the one below:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/5c9567b40993551b.png"></p>
+<p>If you try it now, you will see that getting back to the main and then back to deposit, it won&#39;t persist the selection, since we are resetting it before leaving the page.</p>
+<p>Do the same approach on the <strong>TransactionCompletionPage</strong>, by wrapping the <strong>Scaffold</strong> inside a <strong>WillPopScope</strong> as well, and using the exising <strong>FlutterBankService</strong> reference and calling the <strong>resetSelections</strong> method in the <strong>onWillPop</strong>; also do it inside the <strong>Future.delayed</strong> since there we are automatically popping the screen as well.</p>
+<p>See the code below to ensure you did it correctly; this is what the <strong>TransactionCompletionPage</strong>&#39;s build method looks like after making those changes:</p>
+<p class="image-container"><img alt="Deposit Screen" src="img/d714d2164cba7700.png"></p>
+<p>And with that, we&#39;ve completed the deposit page for this application! I hope you&#39;ve learned some additional tricks and best practices that you can go ahead and implement on your own Flutter apps. Cheers!</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Wrap-up" duration="0">
+        <p>In this codelab, we accomplished the following:</p>
+<ul>
+<li>Wrapped up the deposit page (<strong>FlutterBankDeposit</strong> page)</li>
+<li>Leverage existing custom widgets previously created</li>
+<li>Created additional Custom Widgets (<strong>AccountActionHeader</strong>, <strong>AccountActionCard</strong>, <strong>AccountActionSelection</strong>, <strong>AccountDepositSlider</strong>, <strong>FlutterBankError</strong>, <strong>FlutterBankTransactionCompleted</strong>, etc.)</li>
+<li>Build up on the FlutterBankService to build additional functionality</li>
+<li>Added additional Provider-based services to trigger notifications and thus rebuilding widgets</li>
+<li>Injecting full-blown widgets into other widgets</li>
+<li>Inter-widget communication via provided services</li>
+<li>Learned about additional widgets (WillPopScope, Slider, etc.)</li>
+</ul>
+<h3 is-upgraded>Please don&#39;t forget to follow me on social media:</h3>
+<ul>
+<li>On Twitter (<a href="https://www.twitter.com/drcoderz" target="_blank">@drcoderz</a>)</li>
+<li>On YouTube (<a href="https://www.youtube.com/channel/UCKsp3r1ERjCpKJtD2n5WtPg" target="_blank">Roman Just Codes</a>)</li>
+<li>On My <a href="https://romanjustcodes.web.app/#/home" target="_blank">Personal Portfolio</a></li>
+<li>On <a href="https://medium.com/@romanejaquez" target="_blank">Medium</a></li>
+<li>On <a href="https://www.linkedin.com/in/roman-jaquez-8941a424/" target="_blank">LinkedIn</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Complete Code" duration="0">
+        <pre><code language="language-flutter" class="language-flutter">import &#39;dart:async&#39;;
+import &#39;package:flutter/material.dart&#39;;
+import &#39;package:google_fonts/google_fonts.dart&#39;;
+import &#39;package:firebase_core/firebase_core.dart&#39;;
+import &#39;package:cloud_firestore/cloud_firestore.dart&#39;;
+import &#39;package:firebase_auth/firebase_auth.dart&#39;;
+import &#39;package:provider/provider.dart&#39;;
+import &#39;package:intl/intl.dart&#39;;
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: &#34;AIzaSyBwSM_bH2-kid-TtJPxZUo0Xw_QO8kgsU8&#34;,
+      authDomain: &#34;flutter-bank-app-6ec93.firebaseapp.com&#34;,
+      projectId: &#34;flutter-bank-app-6ec93&#34;,
+      storageBucket: &#34;flutter-bank-app-6ec93.appspot.com&#34;,
+      messagingSenderId: &#34;182673651632&#34;,
+      appId: &#34;1:182673651632:web:aad3511575ff2677108875&#34;
+    )
+  );
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) =&gt; LoginService(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) =&gt; FlutterBankService(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) =&gt; DepositService(),
+        ),
+      ],
+      child: FlutterBankApp()
+    )
+  );
+}
+
+class FlutterBankApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: ThemeData(
+        textTheme: GoogleFonts.poppinsTextTheme(
+          Theme.of(context).textTheme
+        )
+      ),
+      debugShowCheckedModeBanner: false,
+      home: FlutterBankSplash() 
+    );
+  }
+}
+
+class FlutterBankSplash extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+
+    Future.delayed(const Duration(seconds: 2), () {
+       Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) =&gt; FlutterBankLogin())
+       );   
+     });
+
+    return Scaffold(
+      backgroundColor: Utils.mainThemeColor,
+      body: Stack(
+        children: const [
+          Center(
+            child: Icon(Icons.savings, color: Colors.white, size: 60)
+          ),
+          Center(
+            child: SizedBox(
+              width: 100,
+              height: 100,
+              child: CircularProgressIndicator(
+                strokeWidth: 8,
+                valueColor: AlwaysStoppedAnimation&lt;Color&gt;(Colors.white)
+              )
+            )
+          )
+        ],
+      )
+    );
+  }
+}
+
+class FlutterBankLogin extends StatefulWidget {
+  @override
+  FlutterBankLoginState createState() =&gt; FlutterBankLoginState();
+}
+
+class FlutterBankLoginState extends State&lt;FlutterBankLogin&gt;{
+
+  TextEditingController usernameController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+
+    LoginService loginService  = Provider.of&lt;LoginService&gt;(context, listen: false);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Container(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  width: 7,
+                  color: Utils.mainThemeColor
+                ),
+                borderRadius: BorderRadius.circular(100)
+              ),
+              child: const Icon(Icons.savings, color: Utils.mainThemeColor, size: 45)
+            ),
+            const SizedBox(height: 30),
+            const Text(&#39;Welcome to&#39;, style: TextStyle(color: Colors.grey, fontSize: 15)),
+            const Text(&#39;Flutter\nSavings Bank&#39;, 
+            style: TextStyle(color: Utils.mainThemeColor, fontSize: 30)),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center, 
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(&#39;Sign Into Your Bank Account&#39;, 
+                         textAlign: TextAlign.center, 
+                         style: TextStyle(color: Colors.grey, fontSize: 12)
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(50)
+                      ),
+                      child: TextField(
+                        onChanged: (text) {
+                          setState(() {});
+                        },
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          prefixIcon: Icon(Icons.email, color: Utils.mainThemeColor),
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.only(
+                            left: 20, bottom: 11, top: 11, right: 15
+                          ),
+                          hintText: &#34;Email&#34;
+                        ),
+                        style: const TextStyle(fontSize: 16),
+                        controller: usernameController
+                      ) 
+                    ),
+                    const SizedBox(height: 20),
+                    
+                    // password Container wrapper 
+                    Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(50)
+                      ),
+                      child: TextField(
+                        onChanged: (text) {
+                          setState(() {});
+                        },
+                        obscureText: true,
+                        obscuringCharacter: &#34;*&#34;,
+                        decoration: const InputDecoration(
+                          prefixIcon: Icon(Icons.lock, color: Utils.mainThemeColor),
+                          border: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          contentPadding: EdgeInsets.only(
+                            left: 15, bottom: 11, top: 11, right: 15
+                          ),
+                          hintText: &#34;Password&#34;
+                        ),
+                        controller: passwordController,
+                        style: const TextStyle(fontSize: 16),
+                      )
+                    ),
+                    Consumer&lt;LoginService&gt;(
+                      builder: (context, lService, child) {
+
+                        String errorMsg = lService.getErrorMessage();
+                      
+                        if (errorMsg.isEmpty) {
+                          return const SizedBox(height: 40);
+                        }
+
+                        return Container(
+                          padding: const EdgeInsets.all(10),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning, color: Colors.red),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  errorMsg, 
+                                  style: const TextStyle(color: Colors.red)
+                                )
+                              )
+                            ]
+                          )
+                        );
+                      }
+                    )
+                  ]
+                )
+              )
+            ),
+            FlutterBankMainButton(
+              label: &#39;Sign In&#39;,
+              enabled: validateEmailAndPassword(),
+              onTap: () async {
+                var username = usernameController.value.text;
+                var pwd = passwordController.value.text;
+
+                bool isLoggedIn = await loginService.signInWithEmailAndPassword(username, pwd);
+
+                if (isLoggedIn) {
+                  usernameController.clear();
+                  passwordController.clear();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (context) =&gt; FlutterBankMain())
+                  );
+                }
+              }
+            ),
+            const SizedBox(height: 10),
+            FlutterBankMainButton(
+              label: &#39;Register&#39;,
+              icon: Icons.account_circle,
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) =&gt; FlutterAccountRegistration())
+                );
+              },
+              backgroundColor: Utils.mainThemeColor.withOpacity(0.05),
+              iconColor: Utils.mainThemeColor,
+              labelColor: Utils.mainThemeColor
+            ) 
+          ]
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  bool validateEmailAndPassword() {
+    return usernameController.value.text.isNotEmpty &amp;&amp; 
+      passwordController.value.text.isNotEmpty 
+        &amp;&amp; Utils.validateEmail(usernameController.value.text);
+  }
+}
+
+class FlutterAccountRegistration extends StatefulWidget {
+  @override
+  FlutterAccountRegistrationState createState() =&gt; FlutterAccountRegistrationState();
+}
+
+class FlutterAccountRegistrationState extends State&lt;FlutterAccountRegistration&gt; {
+
+  TextEditingController usernameController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+  TextEditingController confirmPasswordController = TextEditingController();
+  
+  @override
+  void dispose() {
+    usernameController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+
+    LoginService loginService = Provider.of&lt;LoginService&gt;(context, listen: false);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Utils.mainThemeColor),
+        backgroundColor: Colors.transparent,
+        title: const Icon(Icons.savings, color: Utils.mainThemeColor, size: 40),
+        centerTitle: true
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // title
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 40),
+                    child: const Text(&#39;Create New Account&#39;, 
+                      style: TextStyle(color: Utils.mainThemeColor, fontSize: 20)
+                    )
+                  ),         
+                  // email field
+                  Utils.generateInputField(&#39;Email&#39;, Icons.email, 
+                    usernameController, 
+                    false, (text) {
+                      setState(() {});
+                  }),
+                  // password field
+                  Utils.generateInputField(&#39;Password&#39;, Icons.lock, 
+                    passwordController, 
+                    true, (text) {
+                      setState(() {});
+                  }),
+                  // password confirmation field
+                  Utils.generateInputField(&#39;Confirm Password&#39;, Icons.lock, 
+                    confirmPasswordController, 
+                    true, (text) {
+                      setState(() {});
+                  }),
+                ]
+              )
+            ),
+            FlutterBankMainButton(
+              label: &#39;Register&#39;,
+              enabled: validateFormFields(),
+              onTap: () async {
+                String username = usernameController.value.text;
+                String pwd = passwordController.value.text;
+
+                bool accountCreated = 
+                    await loginService.createUserWithEmailAndPassword(username, pwd);
+
+                if (accountCreated) {
+                  Navigator.of(context).pop();
+                }
+              }
+            )
+          ]
+        )
+      )
+    );
+  }
+
+  bool validateFormFields() {
+    return Utils.validateEmail(usernameController.value.text) &amp;&amp;
+     usernameController.value.text.isNotEmpty &amp;&amp;
+      passwordController.value.text.isNotEmpty &amp;&amp;
+      confirmPasswordController.value.text.isNotEmpty &amp;&amp;
+      (passwordController.value.text == confirmPasswordController.value.text);
+  }
+}
+
+class FlutterBankMainButton extends StatelessWidget {
+  
+  final Function? onTap;
+  final String? label;
+  final bool? enabled;
+  final IconData? icon;
+  final Color? backgroundColor;
+  final Color? iconColor;
+  final Color? labelColor;
+  
+  const FlutterBankMainButton({
+    Key? key, this.label, this.onTap, 
+    this.icon, 
+    this.backgroundColor = Utils.mainThemeColor, 
+    this.iconColor = Colors.white,
+    this.labelColor = Colors.white,
+    this.enabled = true })
+  : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(50),
+          child: Material(
+            color: enabled! ? backgroundColor : backgroundColor!.withOpacity(0.5),
+              child: InkWell(
+              onTap: enabled! ? () {
+                onTap!();
+              } : null,
+              highlightColor: Colors.white.withOpacity(0.2),
+              splashColor: Colors.white.withOpacity(0.1),
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(50)
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Visibility(
+                        visible: icon != null,
+                        child: Container(
+                          margin: const EdgeInsets.only(right: 20),
+                          child: Icon(icon, color: iconColor, size: 20),
+                        )
+                      ),
+                      Text(label!, textAlign: TextAlign.center, 
+                        style: TextStyle(
+                          color: labelColor, 
+                          fontWeight: FontWeight.bold
+                        )
+                    )
+                  ]
+                )
+              ),
+            ),
+          ),
+        )
+      ],
+    );
+  }
+}
+
+class FlutterBankDeposit extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+    return WillPopScope(
+      onWillPop: () {
+        FlutterBankService bankService = 
+          Provider.of&lt;FlutterBankService&gt;(context, listen: false);
+        bankService.resetSelections();
+        return Future.value(true);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Utils.mainThemeColor),
+          backgroundColor: Colors.transparent,
+          title: const Icon(Icons.savings, color: Utils.mainThemeColor, size: 40),
+          centerTitle: true
+        ),
+        body: Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              AccountActionHeader(headerTitle: &#39;Deposit&#39;, icon: Icons.login),
+              Expanded(
+                child: AccountActionSelection(
+                  actionTypeLabel: &#39;To&#39;,
+                  amountChanger: AccountDepositSlider(),  
+                ),
+              ),
+              Consumer&lt;DepositService&gt;(
+                builder: (context, depositService, child) {
+                  return FlutterBankMainButton(
+                    enabled: depositService.checkAmountToDeposit(),
+                    label: &#39;Make Deposit&#39;,
+                    onTap: (depositService.checkAmountToDeposit() ? () {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =&gt; 
+                            const TransactionCompletionPage(isDeposit: true)
+                          )
+                      );
+                    } : null)
+                  );
+                }
+              )
+            ]
+          )
+        )
+      ),
+    );
+  }
+}
+
+class TransactionCompletionPage extends StatelessWidget {
+  
+  final bool? isDeposit;
+  const TransactionCompletionPage({Key? key, this.isDeposit }):
+    super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+
+    FlutterBankService bankService = 
+      Provider.of&lt;FlutterBankService&gt;(context, listen: false);
+
+    Future.delayed(const Duration(seconds: 3), () {
+      bankService.resetSelections();
+      Navigator.of(context).pop();
+    });
+
+    return WillPopScope(
+      onWillPop: () {
+        bankService.resetSelections();
+        return Future.value(true);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          elevation: 0,
+          iconTheme: const IconThemeData(color: Utils.mainThemeColor),
+          backgroundColor: Colors.transparent,
+          title: const Icon(Icons.savings, color: Utils.mainThemeColor, size: 40),
+          centerTitle: true
+        ),
+        body: Center(
+          child: FutureBuilder(
+            future: bankService.performDeposit(context),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return FlutterBankLoading();
+              }
+
+              if (snapshot.hasError) {
+                return FlutterBankError();
+              }
+
+              return FlutterBankTransactionCompleted();
+            }
+          )
+        )
+      )
+    );
+  }
+}
+
+class FlutterBankTransactionCompleted extends StatelessWidget {
+
+  @override 
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: const [
+        Icon(Icons.check_circle_outline_outlined, 
+          color: Utils.mainThemeColor, size: 80
+        ),
+        SizedBox(height: 20),
+        Text(&#39;Transaction Completed&#39;, 
+          style: TextStyle(color: Utils.mainThemeColor, fontSize: 20)
+        ),
+      ]
+    );
+  }
+}
+
+class AccountActionSelection extends StatelessWidget {
+
+  final String? actionTypeLabel;
+  final Widget? amountChanger;
+
+  const AccountActionSelection({ 
+    this.actionTypeLabel,
+    required this.amountChanger
+  });
+
+  @override 
+  Widget build(BuildContext context) {
+    return Consumer&lt;FlutterBankService&gt;(
+      builder: (context, service, child) {
+        
+         return FutureBuilder(
+            future: service.getAccounts(context),
+            builder: (context, snapshot) {
+              
+              if (!snapshot.hasData) {
+                return FlutterBankLoading();
+              }
+
+              if (snapshot.hasError) {
+                return FlutterBankError();
+              }
+
+              var selectedAccount = service.getSelectedAccount();
+              List&lt;Account&gt; accounts = snapshot.data as List&lt;Account&gt;;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(actionTypeLabel!, 
+                    style: TextStyle(color: Colors.grey, fontSize: 15)
+                  ),
+                  const SizedBox(height: 10),
+                  AccountActionCard(
+                    selectedAccount:  selectedAccount,
+                    accounts: accounts,  
+                  ),
+                  
+                  Expanded(
+                    child: Visibility(
+                      visible: selectedAccount != null,
+                      child:
+                      
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            margin: const EdgeInsets.only(top: 30),
+                            child: Text(&#39;Current Balance&#39;, 
+                              style: const TextStyle(color: Colors.grey)
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.monetization_on, 
+                                  color: Utils.mainThemeColor, size: 25
+                                ),
+                              Text(selectedAccount != null ? 
+                                   &#39;\$&#39; + selectedAccount.balance!.toStringAsFixed(2): &#39;&#39;, 
+                                style: const TextStyle(color: Colors.black, fontSize: 35)
+                              )
+                            ]
+                          ),
+                          Expanded(
+                            child: amountChanger!,
+                          )
+                        ]
+                      ),
+
+
+                    )
+                  )
+                ]
+              );
+
+
+            }
+         );
+
+      }
+    );
+  }
+}
+
+class AccountDepositSlider extends StatelessWidget {
+
+  @override 
+  Widget build(BuildContext context) {
+    return Consumer&lt;DepositService&gt;(
+      builder: (context, depositService, child) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(&#39;Amount To Deposit&#39;, style: 
+            TextStyle(color: Colors.grey)),
+            Text(&#39;\$${depositService.amountToDeposit.toInt().toString()}&#39;,
+              style: const TextStyle(color: Colors.black, fontSize: 60)
+            ),
+            Slider(
+              value: depositService.amountToDeposit,
+              max: 1000,
+              activeColor: Utils.mainThemeColor,
+              inactiveColor: Colors.grey.withOpacity(0.5),
+              thumbColor: Utils.mainThemeColor,
+              onChanged: (double value) {
+                depositService.setAmountToDeposit(value);
+              }
+            )                            
+          ]
+        );
+      }
+    );
+  }
+}
+
+class AccountActionCard extends StatelessWidget {
+
+  final List&lt;Account&gt;? accounts;
+  final Account? selectedAccount;
+
+  const AccountActionCard({ this.accounts, this.selectedAccount });
+
+  @override
+  Widget build(BuildContext context) {
+
+    FlutterBankService bankService = 
+      Provider.of&lt;FlutterBankService&gt;(context, listen: false);
+
+    return Row(
+      children: List.generate(accounts!.length, (index) {
+        var currentAccount = accounts![index];
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              bankService.setSelectedAccount(currentAccount);
+            },
+            child: Container(
+              margin: const EdgeInsets.all(5),
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20, offset: const Offset(0.0, 5.0)
+                  )
+                ],
+                border: Border.all(
+                  width: 5,
+                  color: selectedAccount != null &amp;&amp; 
+                    selectedAccount!.id == currentAccount.id ? 
+                      Utils.mainThemeColor : Colors.transparent
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(&#39;${currentAccount.type!.toUpperCase()} ACCT&#39;, 
+                    style: const TextStyle(color: Utils.mainThemeColor)
+                  ),
+                  Text(currentAccount.accountNumber!)
+                ]
+              )
+            ),
+          ),
+        );
+      })
+    );
+  }
+
+
+}
+
+class FlutterBankError extends StatelessWidget {
+
+  @override 
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: const [
+          Icon(Icons.warning_outlined, color: Utils.mainThemeColor, size: 80),
+          SizedBox(height: 20),
+          Text(&#39;Error fetching data&#39;, 
+            style: TextStyle(color: Utils.mainThemeColor, fontSize: 20)
+          ),
+          Text(&#39;Please try again&#39;, 
+            style: TextStyle(color: Colors.grey, fontSize: 12)
+          )
+        ]
+      )
+    );
+  }
+}
+
+class AccountActionHeader extends StatelessWidget {
+
+  final String? headerTitle;
+  final IconData? icon;
+
+  const AccountActionHeader({ this.headerTitle, this.icon });
+  
+  @override 
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Row(
+        children: [
+          Icon(icon, color: Utils.mainThemeColor, size: 30),
+          const SizedBox(width: 10),
+          Text(headerTitle!, 
+            style: const TextStyle(color: Utils.mainThemeColor, fontSize: 20)
+          )
+        ]
+      ),
+    );
+  }
+}
+
+class FlutterBankMain extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      drawer: Drawer(child: FlutterBankDrawer()),
+      appBar: AppBar(
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Utils.mainThemeColor),
+        backgroundColor: Colors.transparent,
+        title: const Icon(Icons.savings, color: Utils.mainThemeColor, size: 40),
+        centerTitle: true
+      ),
+      body: Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            Row(
+              children: const [
+                Icon(Icons.account_balance_wallet, 
+                  color: Utils.mainThemeColor, size: 30),
+                SizedBox(width: 10),
+                Text(&#39;My Accounts&#39;, 
+                  style: TextStyle(color: Utils.mainThemeColor, fontSize: 20)
+                )
+              ]
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: Consumer&lt;FlutterBankService&gt;(
+                builder: (context, bankService, child) {
+                  return FutureBuilder(
+                    future: bankService.getAccounts(context),
+                    builder: (BuildContext context, AsyncSnapshot snapshot) {
+
+                      if (snapshot.connectionState != ConnectionState.done || !snapshot.hasData) {
+                        return FlutterBankLoading();
+                      }
+
+                      List&lt;Account&gt; accounts = snapshot.data as List&lt;Account&gt;;
+                      
+                      if (accounts.isEmpty) {
+                        return Center(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.account_balance_wallet, color: Utils.mainThemeColor, size: 50),
+                              SizedBox(height: 20),
+                              Text(&#39;You don\&#39;t have any accounts\nassociated with your profile.&#39;, 
+                              textAlign: TextAlign.center, style: TextStyle(color: Utils.mainThemeColor))
+                            ]
+                          )
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: accounts.length,
+                        itemBuilder: (context, index) {
+                          var acct = accounts[index];
+                          return AccountCard(account: acct);
+                        }
+                      );
+                    }
+                  );
+                }
+              )
+            )
+          ]
+        )
+      ),
+      bottomNavigationBar: FlutterBankBottomBar(),
+    );
+  }
+}
+
+class AccountCard extends StatelessWidget {
+  
+  final Account? account;
+  const AccountCard({ Key? key, this.account }) : super(key: key);
+  
+  @override
+  Widget build(BuildContext context) {
+
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(25),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 15,
+            offset: const Offset(0.0, 5.0)
+          )
+        ]
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Text(&#39;${account!.type!.toUpperCase()} ACCT&#39;, textAlign: TextAlign.left, 
+                style: const TextStyle(color: Utils.mainThemeColor, fontSize: 12)),
+              Text(&#39;**** ${account!.accountNumber}&#39;)
+            ]
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(&#39;Balance&#39;, textAlign: TextAlign.left, 
+                style: TextStyle(color: Utils.mainThemeColor, fontSize: 12)
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.monetization_on, color: Utils.mainThemeColor, size: 30),
+                  Text(&#39;\$${account!.balance!.toStringAsFixed(2)}&#39;, 
+                    style: const TextStyle(color: Colors.black, fontSize: 35)
+                  )
+                ]
+              ),
+              Text(&#39;As of ${DateFormat.yMd().add_jm().format(DateTime.now())}&#39;, 
+                style: const TextStyle(fontSize: 10, color: Colors.grey)
+              )
+            ]
+          )
+        ]
+      )
+    );
+  }
+}
+
+class FlutterBankBottomBar extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+
+    var bottomItems = Utils.getBottomBarItems(context);
+
+    return Container(
+      height: 100,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Utils.mainThemeColor.withOpacity(0.05),
+            blurRadius: 10,
+            offset: Offset.zero
+          )
+        ]
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: List.generate(
+          bottomItems.length, (index) {
+            FlutterBankBottomBarItem bottomItem = bottomItems[index];
+            
+            return Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                highlightColor: Utils.mainThemeColor.withOpacity(0.2),
+                splashColor: Utils.mainThemeColor.withOpacity(0.1),
+                onTap: () {
+                  bottomItem.action!();
+                },
+                child: Container(
+                  constraints: BoxConstraints(minWidth: 80),
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(bottomItem.icon, color: Utils.mainThemeColor, size: 20),
+                      Text(bottomItem.label!, 
+                        style: TextStyle(color: Utils.mainThemeColor, fontSize: 10)
+                      )
+                    ]
+                  )
+                )
+              )
+            );
+          }
+        )
+      )
+    );
+  }
+}
+
+class FlutterBankLoading extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SizedBox(
+        width: 80,
+        height: 80,
+        child: Stack(
+          children: const [
+            Center(
+              child: SizedBox(
+                width: 80,
+                height: 80,
+                child: CircularProgressIndicator(
+                  strokeWidth: 8,
+                  valueColor: AlwaysStoppedAnimation&lt;Color&gt;(Utils.mainThemeColor)
+                )
+              )
+            ),
+            Center(
+              child: Icon(Icons.savings, color: Utils.mainThemeColor, size: 40)
+            )
+          ]
+        )
+      )
+    );
+  }
+}
+
+class FlutterBankDrawer extends StatelessWidget {
+  
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Utils.mainThemeColor,
+      padding: const EdgeInsets.all(30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.savings, color: Colors.white, size: 60),
+          const SizedBox(height: 40),
+          Material(
+            color: Colors.transparent,
+
+            // rest of the code omitted for brevity...
+            child: TextButton(
+              style: ButtonStyle(
+                 backgroundColor: MaterialStateProperty.all&lt;Color&gt;(Colors.white.withOpacity(0.1))
+              ),
+              child: const Text(&#39;Sign Out&#39;, textAlign: TextAlign.left, 
+                style: TextStyle(color: Colors.white)
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                Utils.signOutDialog(context);
+              },
+            )
+
+
+          )
+        ]
+      )
+    );
+  }
+}
+
+
+// UTILITIES
+class Utils {
+  static const Color mainThemeColor = Color(0xFF8700C3);
+
+  static bool validateEmail(String? value) {
+    String pattern =
+        r&#34;^[a-zA-Z0-9.!#$%&amp;&#39;*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]&#34;
+        r&#34;{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]&#34;
+        r&#34;{0,253}[a-zA-Z0-9])?)*$&#34;;
+    RegExp regex = RegExp(pattern);
+    
+    return (value != null || value!.isNotEmpty || regex.hasMatch(value));
+  }
+
+  static Widget generateInputField(
+    String hintText, 
+    IconData iconData, 
+    TextEditingController controller, 
+    bool isPasswordField, 
+    Function onChanged) {
+
+    return Container(
+      padding: const EdgeInsets.all(5),
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(50)
+      ),
+      child: TextField(
+        onChanged: (text) {
+          onChanged(text);
+        },
+        obscureText: isPasswordField,
+        obscuringCharacter: &#34;*&#34;,
+        decoration: InputDecoration(
+          prefixIcon: Icon(iconData, color: Utils.mainThemeColor),
+          border: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: EdgeInsets.only(left: 15, bottom: 11, top: 11, right: 15),
+          hintText: hintText
+        ),
+        controller: controller,
+        style: const TextStyle(fontSize: 16),
+      )
+    );
+  }
+
+  static void signOutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return AlertDialog(
+          title: const Text(&#39;Flutter Savings Bank Logout&#39;, 
+          style: TextStyle(color: Utils.mainThemeColor)),
+          content: Container(
+            padding: const EdgeInsets.all(20),
+            child: const Text(&#39;Are you sure you want to log out of your account?&#39;)
+          ),
+          actions: [
+            TextButton(
+              child: const Text(&#39;Yes&#39;, style: TextStyle(color: Utils.mainThemeColor)),
+              onPressed: () async {
+                
+                Navigator.of(ctx).pop();
+                LoginService loginService = Provider.of&lt;LoginService&gt;(ctx, listen: false);
+                await loginService.signOut();
+                Navigator.of(ctx).pop();
+
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  static List&lt;FlutterBankBottomBarItem&gt; getBottomBarItems(BuildContext context) {
+    return [
+      FlutterBankBottomBarItem(
+        label: &#39;Withdraw&#39;,
+        icon: Icons.logout,
+        action: () {}
+      ),
+      FlutterBankBottomBarItem(
+        label: &#39;Deposit&#39;,
+        icon: Icons.login,
+        action: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) =&gt; FlutterBankDeposit())
+          );
+        }
+      ),
+      FlutterBankBottomBarItem(
+        label: &#39;Expenses&#39;,
+        icon: Icons.payments,
+        action: () {}
+      )
+    ];
+  }
+
+
+}
+
+// SERVICES 
+class LoginService extends ChangeNotifier {
+
+  String _userId = &#39;&#39;;
+  String _errorMessage = &#39;&#39;;
+  
+  String getErrorMessage() {
+    return _errorMessage;
+  }
+
+  void setLoginErrorMessage(String msg) {
+    _errorMessage = msg;
+    notifyListeners();
+  }
+
+  String getUserId() {
+    return _userId;
+  }
+
+  Future&lt;bool&gt; signOut() {
+    Completer&lt;bool&gt; signOutCompleter = Completer();
+
+    FirebaseAuth.instance.signOut().then(
+      (value) {
+        signOutCompleter.complete(true);
+      },
+      onError: (error) {
+        signOutCompleter.completeError({ &#39;error&#39;: error });
+      }
+    );
+
+    return signOutCompleter.future;
+  }
+
+  Future&lt;bool&gt; createUserWithEmailAndPassword(String email, String pwd) async {
+
+    try {
+      UserCredential userCredentials = 
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pwd);
+      
+      return true; // or userCredentials != null;
+      
+    } on FirebaseAuthException {
+      return false;
+    }
+  }
+
+  Future&lt;bool&gt; signInWithEmailAndPassword(String email, String password) async {
+    setLoginErrorMessage(&#39;&#39;);
+
+    try {
+      UserCredential credentials = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      
+      _userId = credentials.user!.uid;
+      
+      return true;
+      
+    } on FirebaseAuthException catch (ex) {
+      setLoginErrorMessage(&#39;Error during sign-in: &#39; + ex.message!);
+      return false;
+    }
+  }
+}
+
+class FlutterBankService extends ChangeNotifier {
+
+  Account? selectedAccount;
+
+  void setSelectedAccount(Account? acct) {
+    selectedAccount = acct;
+    notifyListeners();
+  }
+
+  void resetSelections() {
+    setSelectedAccount(null);
+  }
+  
+  Account? getSelectedAccount() {
+    return selectedAccount;
+  }
+
+  Future&lt;List&lt;Account&gt;&gt; getAccounts(BuildContext context) {
+
+    LoginService loginService = Provider.of&lt;LoginService&gt;(context, listen: false);
+    String userId = loginService.getUserId();
+
+    List&lt;Account&gt; accounts = [];
+
+    Completer&lt;List&lt;Account&gt;&gt; accountsCompleter = Completer();
+
+    FirebaseFirestore.instance
+      .collection(&#39;accounts&#39;)
+      .doc(userId)
+      .collection(&#39;user_accounts&#39;)
+      .get().then(
+        (QuerySnapshot collection) {
+
+          for(var doc in collection.docs) {
+              var acctDoc = doc.data() as Map&lt;String, dynamic&gt;;
+              var acct = Account.fromJson(acctDoc, doc.id);
+              accounts.add(acct);
+          }
+
+          Future.delayed(const Duration(seconds: 1), () {
+            accountsCompleter.complete(accounts);
+          });
+        },
+        onError: (error) {
+          accountsCompleter.completeError({ &#39;error&#39;: error });
+        }
+      );
+
+    return accountsCompleter.future;
+  }
+
+  Future&lt;bool&gt; performDeposit(BuildContext context) {
+    
+    Completer&lt;bool&gt; depositComplete = Completer();
+
+    LoginService loginService = Provider.of&lt;LoginService&gt;(context, listen: false);
+    String userId = loginService.getUserId();
+    
+    DepositService depositService = Provider.of&lt;DepositService&gt;(context, listen: false);
+    int amountToDeposit = depositService.amountToDeposit.toInt();
+
+    DocumentReference doc = 
+    FirebaseFirestore.instance
+      .collection(&#39;accounts&#39;)
+      .doc(userId)
+      .collection(&#39;user_accounts&#39;)
+      .doc(selectedAccount!.id!);
+
+    doc.update({
+      &#39;balance&#39;: selectedAccount!.balance! + amountToDeposit
+    }).then((value) {
+      depositService.resetDepositService();
+      depositComplete.complete(true);
+    }, onError: (error) {
+      depositComplete.completeError({ &#39;error&#39;: error });
+    });
+
+    return depositComplete.future;
+  }
+}
+
+class DepositService extends ChangeNotifier {
+
+  double amountToDeposit = 0;
+  
+  void setAmountToDeposit(double amount) {
+    amountToDeposit = amount;
+    notifyListeners();
+  }
+  
+  void resetDepositService() {
+    amountToDeposit = 0;
+    notifyListeners();
+  }
+  
+  bool checkAmountToDeposit() {
+    return amountToDeposit &gt; 0;
+  }
+}
+
+// MODELS
+class Account {
+  
+  String? id;
+  String? type;
+  String? accountNumber;
+  double? balance;
+  
+  Account({ this.id, this.type, this.accountNumber, this.balance });
+  
+  factory Account.fromJson(Map&lt;String, dynamic&gt; json, String docId) {
+    return Account(
+      id: docId,
+      type: json[&#39;type&#39;],
+      accountNumber: json[&#39;account_number&#39;],
+      balance: json[&#39;balance&#39;]
+    );
+  }
+}
+
+class FlutterBankBottomBarItem {
+
+  String? label;
+  IconData? icon;
+  Function? action;
+
+  FlutterBankBottomBarItem({ this.label, this.icon, this.action });
+}
+
+</code></pre>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/codelab-elements/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/custom-elements.min.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/prettify.js"></script>
+  <script src="https://storage.googleapis.com/codelab-elements/codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>
